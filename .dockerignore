@@ -1,0 +1,11 @@
+# Ignore Python virtual environment and cache
+.venv
+__pycache__
+*.pyc
+
+# Ignore Git and development tool configurations
+.git
+.gitignore
+.vscode
+.devcontainer
+.mypy_cache

@@ -1,0 +1,11 @@
+[project]
+name = "dumb-pass"
+version = "0.1.0"
+description = "Backend for strong-pass"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi[standard]",
+    "sqlalchemy>=2.0.43",
+    "uvicorn>=0.37.0",
+]
