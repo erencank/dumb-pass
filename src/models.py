@@ -15,7 +15,8 @@ class UserBase(SQLModel):
 class DeviceBase(SQLModel):
     device_name: str
     public_key: bytes = Field(sa_column=Column(LargeBinary, nullable=False))
-    encrypted_private_key: bytes = Field(sa_column=Column(LargeBinary, nullable=False))
+    encrypted_private_key_blob: bytes = Field(sa_column=Column(LargeBinary, nullable=False))
+    encrypted_wrapping_key: bytes = Field(sa_column=Column(LargeBinary, nullable=False))
 
 
 class VaultItemBase(SQLModel):
@@ -48,7 +49,8 @@ class VaultItem(VaultItemBase, table=True):
 class UserCreate(UserBase):
     device_name: str
     device_public_key: bytes
-    device_encrypted_private_key: bytes
+    device_encrypted_private_key_blob: bytes
+    device_encrypted_wrapping_key: bytes
 
 
 class DeviceCreate(DeviceBase):

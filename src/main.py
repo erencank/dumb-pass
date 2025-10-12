@@ -8,6 +8,7 @@ from src.core.logging import setup_logger
 from src.db import init_db
 
 from .core.config import get_settings
+from .routes.auth import router as auth_router
 
 settings = get_settings()
 setup_logger()
@@ -25,12 +26,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 def get_app() -> FastAPI:
     app = FastAPI(title="Password Manager API", lifespan=lifespan)
+    app.include_router(auth_router)
     return app
 
 
 app = get_app()
-
-
-@app.get("/")
-def read_root():
-    return {"status": "API is running"}
