@@ -10,8 +10,10 @@ class Settings(BaseSettings):
     postgres_password: str
 
     secret_key: str
+    challenge_secret_key: str
     algorithm: str = "HS256"
     access_token_expiration_minutes: int = 15
+    challenge_token_expiration_minutes: int = 2
 
     model_config = SettingsConfigDict(env_file=".env")
 

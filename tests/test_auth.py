@@ -1,22 +1,20 @@
 import base64
-import os
 import uuid
 
-from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import padding
+import jwt
 from fastapi import status
 
-from src.crypto import encrypt_with_aes_gcm, generate_rsa_key_pair
-from src.models import UserCreate
+from src.core.config import get_settings
+from src.crypto import derive_encryption_key, sign_data
+from tests.auth_utils import _create_payload
+from tests.conftest import UserDeviceFixture
 
 
 def test_register_user(client) -> None:
     payload = _create_payload()
 
-    payload_dict = payload.model_dump()
+    payload_dict = payload.user.model_dump()
 
-    # 3. Manually encode all 'bytes' fields to Base64 strings for JSON compatibility
-    # These are the fields in your UserCreate model that are of type `bytes`
     binary_fields = [
         "public_key",
         "encrypted_private_key",
@@ -37,53 +35,71 @@ def test_register_user(client) -> None:
     assert response_data["status"] == "success"
 
 
-def _create_payload() -> UserCreate:
-    # A. Generate a fake master password and salt
-    master_password = "a-very-strong-password-123!"
-    master_password_salt = os.urandom(16).hex()
+def test_login_challenge(client, user_and_device: UserDeviceFixture) -> None:
+    payload = {"email": user_and_device.user.email, "device_id": str(user_and_device.device.id)}
 
-    # Should be derived from password and salt
-    derived_encryption_key = os.urandom(32)
+    response = client.post("auth/token/challenge", json=payload)
+    assert response.status_code == status.HTTP_200_OK
 
-    # B. Generate the user's master key pair
-    user_private_key, user_public_key = generate_rsa_key_pair()
+    response_data = response.json()
+    challenge_token = response_data["challenge_token"]
 
-    # C. Encrypt the user's private key with the derived key
-    user_private_key_pem = user_private_key.private_bytes(
-        encoding=serialization.Encoding.PEM, format=serialization.PrivateFormat.PKCS8, encryption_algorithm=serialization.NoEncryption()
-    )
-    encrypted_user_private_key = encrypt_with_aes_gcm(user_private_key_pem, derived_encryption_key)
+    settings = get_settings()
+    challenge_payload = jwt.decode(challenge_token, algorithms=[settings.algorithm], options={"verify_signature": False})
+    nonce = challenge_payload.get("nonce")
+    assert nonce is not None
 
-    # D. Generate the first device's key pair
-    device_private_key, device_public_key = generate_rsa_key_pair()
-    device_private_key_pem = device_private_key.private_bytes(
-        encoding=serialization.Encoding.PEM, format=serialization.PrivateFormat.PKCS8, encryption_algorithm=serialization.NoEncryption()
-    )
+    signature = sign_data(user_and_device.device_private_key, nonce.encode())
 
-    # E.1. Generate a new, single-use AES key (the "wrapping key")
-    wrapping_key = os.urandom(32)
+    token_payload = {
+        "challenge_token": challenge_token,
+        "signature": base64.b64encode(signature).decode("ascii"),  # Send signature as a B64 in JSON
+    }
+    response = client.post("/auth/token", json=token_payload)
+    assert response.status_code == status.HTTP_200_OK
 
-    # E.2. Encrypt the large data (device private key) with the AES wrapping key
-    encrypted_device_private_key_blob = encrypt_with_aes_gcm(device_private_key_pem, wrapping_key)
+    token_response_data = response.json()
+    assert token_response_data
 
-    # E.3. Encrypt the small AES wrapping key with the USER's PUBLIC RSA key
-    encrypted_wrapping_key = user_public_key.encrypt(wrapping_key, padding.OAEP(mgf=padding.MGF1(algorithm=hashes.SHA256()), algorithm=hashes.SHA256(), label=None))
 
-    # F. Serialize public keys to bytes for the payload
-    user_public_key_pem = user_public_key.public_bytes(encoding=serialization.Encoding.PEM, format=serialization.PublicFormat.SubjectPublicKeyInfo)
-    device_public_key_pem = device_public_key.public_bytes(encoding=serialization.Encoding.PEM, format=serialization.PublicFormat.SubjectPublicKeyInfo)
+def test_invalid_login_challenge(client, user_and_device: UserDeviceFixture) -> None:
+    payload = {"email": user_and_device.user.email, "device_id": str(uuid.uuid4())}
 
-    registration_payload = UserCreate(
-        email=f"testuser_{uuid.uuid4().hex}@example.com",
-        # In a real client, this hash would be generated from the master password.
-        # For the test, we can send a placeholder since the server just stores it.
-        master_password_hash="placeholder_hash_from_client",
-        master_password_salt=master_password_salt,
-        public_key=user_public_key_pem,
-        encrypted_private_key=encrypted_user_private_key,
-        device_name="Test Device",
-        device_public_key=device_public_key_pem,
-        device_encrypted_private_key_blob=encrypted_device_private_key_blob,
-        device_encrypted_wrapping_key=encrypted_wrapping_key,
-    )
-    return registration_payload
+    response = client.post("auth/token/challenge", json=payload)
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    payload = {"email": str("randommail@mail.com"), "device_id": str(user_and_device.device.id)}
+
+    response = client.post("auth/token/challenge", json=payload)
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+def test_invalid_response_login_challenge(client, user_and_device: UserDeviceFixture) -> None:
+    payload = {"email": user_and_device.user.email, "device_id": str(user_and_device.device.id)}
+
+    response = client.post("auth/token/challenge", json=payload)
+    assert response.status_code == status.HTTP_200_OK
+
+    response_data = response.json()
+    challenge_token = response_data["challenge_token"]
+
+    settings = get_settings()
+    challenge_payload = jwt.decode(challenge_token, algorithms=[settings.algorithm], options={"verify_signature": False})
+    nonce = challenge_payload.get("nonce")
+    assert nonce is not None
+
+    token_payload = {
+        "challenge_token": challenge_token,
+        "signature": base64.b64encode(b"blablabla").decode("ascii"),
+    }
+    response = client.post("/auth/token", json=token_payload)
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    signature = sign_data(user_and_device.device_private_key, nonce.encode())
+
+    token_payload = {
+        "challenge_token": jwt.encode({"blabla": "oof"}, "blabla", get_settings().algorithm),
+        "signature": base64.b64encode(signature).decode("ascii"),
+    }
+    response = client.post("/auth/token", json=token_payload)
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED

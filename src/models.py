@@ -73,3 +73,32 @@ class VaultItemRead(VaultItemBase):
 class VaultItemUpdate(SQLModel):
     blob: bytes | None
     item_key: bytes | None
+
+
+# --- API Data Models for Authentication ---
+class ChallengeRequest(SQLModel):
+    """Client sends this to start the login process."""
+
+    email: EmailStr
+    device_id: uuid.UUID
+
+
+class ChallengeResponse(SQLModel):
+    """Server responds with the salt and a temporary challenge token."""
+
+    master_password_salt: str
+    challenge_token: str
+
+
+class TokenRequest(SQLModel):
+    """Client sends this back after solving the challenge."""
+
+    challenge_token: str
+    signature: bytes  # The signature proves the client has the device's private key.
+
+
+class TokenResponse(SQLModel):
+    """Server responds with the final session token upon success."""
+
+    access_token: str
+    token_type: str = "bearer"
