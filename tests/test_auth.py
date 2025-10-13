@@ -5,7 +5,7 @@ import jwt
 from fastapi import status
 
 from src.core.config import get_settings
-from src.crypto import derive_encryption_key, sign_data
+from src.crypto import sign_data
 from tests.auth_utils import _create_payload
 from tests.conftest import UserDeviceFixture
 
@@ -59,7 +59,13 @@ def test_login_challenge(client, user_and_device: UserDeviceFixture) -> None:
     assert response.status_code == status.HTTP_200_OK
 
     token_response_data = response.json()
-    assert token_response_data
+    access_token = token_response_data["access_token"]
+
+    response = client.get("/auth/users/me", headers={"Authorization": f"Bearer {access_token}"})
+    assert response.status_code == status.HTTP_200_OK
+
+    user_response_data = response.json()
+    assert user_response_data["email"] == user_and_device.user.email
 
 
 def test_invalid_login_challenge(client, user_and_device: UserDeviceFixture) -> None:

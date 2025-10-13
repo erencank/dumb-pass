@@ -11,14 +11,17 @@ from src.core.config import get_settings
 from src.crypto import verify_signature
 from src.db import get_session
 from src.models import ChallengeRequest, ChallengeResponse, Device, TokenRequest, TokenResponse, User, UserCreate
-from src.security import create_access_token, create_challenge_token
+from src.security import create_access_token, create_challenge_token, get_current_user
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
-@router.get("/test")
-def test(session: Annotated[Session, Depends(get_session)]):
-    return {"users": session.exec(select(User)).all()}
+@router.get("/users/me")
+def read_users_me(current_user: Annotated[User, Depends(get_current_user)]):
+    """
+    A protected endpoint that returns the current authenticated user's details.
+    """
+    return {"email": current_user.email}
 
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
@@ -95,11 +98,11 @@ def login_with_challenge(request: TokenRequest, session: Annotated[Session, Depe
         device_id = uuid.UUID(payload.get("device_id"))
         nonce = payload.get("nonce")
     except (jwt.PyJWTError, TypeError):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired challenge")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
 
     device = session.get(Device, device_id)
     if not device or device.user_id != user_id:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid device")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
 
     # Verify the signature
     # This proves the client has the device's private key
@@ -110,7 +113,7 @@ def login_with_challenge(request: TokenRequest, session: Annotated[Session, Depe
     )
 
     if not is_valid_signature:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid signature")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
 
     # If signature is valid, authentication is successful.
     # Create the final, long-lived access token for the session.
