@@ -1,6 +1,7 @@
 import uuid
+from typing import Literal
 
-from pydantic import EmailStr
+from pydantic import Base64Bytes, EmailStr
 from sqlmodel import Column, Field, LargeBinary, Relationship, SQLModel
 
 
@@ -8,20 +9,20 @@ class UserBase(SQLModel):
     email: EmailStr
     master_password_hash: str
     master_password_salt: str
-    public_key: bytes = Field(sa_column=Column(LargeBinary, nullable=False))
-    encrypted_private_key: bytes = Field(sa_column=Column(LargeBinary, nullable=False))
+    public_key: Base64Bytes = Field(sa_column=Column(LargeBinary, nullable=False))
+    encrypted_private_key: Base64Bytes = Field(sa_column=Column(LargeBinary, nullable=False))
 
 
 class DeviceBase(SQLModel):
     device_name: str
-    public_key: bytes = Field(sa_column=Column(LargeBinary, nullable=False))
-    encrypted_private_key_blob: bytes = Field(sa_column=Column(LargeBinary, nullable=False))
-    encrypted_wrapping_key: bytes = Field(sa_column=Column(LargeBinary, nullable=False))
+    public_key: Base64Bytes = Field(sa_column=Column(LargeBinary, nullable=False))
+    encrypted_private_key_blob: Base64Bytes = Field(sa_column=Column(LargeBinary, nullable=False))
+    encrypted_wrapping_key: Base64Bytes = Field(sa_column=Column(LargeBinary, nullable=False))
 
 
 class VaultItemBase(SQLModel):
-    blob: bytes = Field(sa_column=Column(LargeBinary, nullable=False))
-    item_key: bytes = Field(sa_column=Column(LargeBinary, nullable=False))
+    blob: Base64Bytes = Field(sa_column=Column(LargeBinary, nullable=False))
+    item_key: Base64Bytes = Field(sa_column=Column(LargeBinary, nullable=False))
 
 
 class User(UserBase, table=True):
@@ -33,7 +34,7 @@ class User(UserBase, table=True):
 
 class Device(DeviceBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True, index=True)
-    signature: bytes | None = Field(default=None, sa_column=Column(LargeBinary))
+    signature: Base64Bytes | None = Field(default=None, sa_column=Column(LargeBinary))
 
     user_id: uuid.UUID = Field(foreign_key="user.id")
     user: User = Relationship(back_populates="devices")
@@ -48,9 +49,9 @@ class VaultItem(VaultItemBase, table=True):
 
 class UserCreate(UserBase):
     device_name: str
-    device_public_key: bytes
-    device_encrypted_private_key_blob: bytes
-    device_encrypted_wrapping_key: bytes
+    device_public_key: Base64Bytes
+    device_encrypted_private_key_blob: Base64Bytes
+    device_encrypted_wrapping_key: Base64Bytes
 
 
 class DeviceCreate(DeviceBase):
@@ -59,7 +60,7 @@ class DeviceCreate(DeviceBase):
 
 class DeviceApprove(SQLModel):
     device_id_to_approve: uuid.UUID
-    signature: bytes
+    signature: Base64Bytes
 
 
 class VaultItemCreate(VaultItemBase):
@@ -71,11 +72,17 @@ class VaultItemRead(VaultItemBase):
 
 
 class VaultItemUpdate(SQLModel):
-    blob: bytes | None
-    item_key: bytes | None
+    blob: Base64Bytes | None
+    item_key: Base64Bytes | None
 
 
 # --- API Data Models for Authentication ---
+class UserCreateResponse(SQLModel):
+    user_id: uuid.UUID
+    device_id: uuid.UUID
+    status: Literal["success", "failure"]
+
+
 class ChallengeRequest(SQLModel):
     """Client sends this to start the login process."""
 
@@ -94,7 +101,7 @@ class TokenRequest(SQLModel):
     """Client sends this back after solving the challenge."""
 
     challenge_token: str
-    signature: bytes  # The signature proves the client has the device's private key.
+    signature: Base64Bytes  # The signature proves the client has the device's private key.
 
 
 class TokenResponse(SQLModel):

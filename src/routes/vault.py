@@ -4,13 +4,13 @@ from fastapi import APIRouter, Depends, status
 from sqlmodel import Session, select
 
 from src.db import get_session
-from src.models import User, VaultItem, VaultItemCreate, VaultItemRead
+from src.models import User, VaultItem, VaultItemCreate
 from src.security import get_current_user
 
 router = APIRouter(prefix="/vault", tags=["Vault"])
 
 
-@router.post("/", response_model=VaultItemRead, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=VaultItem, status_code=status.HTTP_201_CREATED)
 def create_vault_item(
     item: VaultItemCreate,
     current_user: Annotated[User, Depends(get_current_user)],
@@ -18,7 +18,7 @@ def create_vault_item(
 ):
     "Create a new encrypted vault item for the authenticated user."
     # The client sends pre-encrypted data. The server just stores it.
-    db_item = VaultItem.model_validate(item, update={"user_id": current_user.id})
+    db_item = VaultItem(blob=item.blob, item_key=item.item_key, user_id=current_user.id)
 
     session.add(db_item)
     session.commit()
@@ -26,7 +26,7 @@ def create_vault_item(
     return db_item
 
 
-@router.get("/", response_model=list)
+@router.get("/", response_model=list[VaultItem])
 def get_vault_items(
     current_user: Annotated[User, Depends(get_current_user)],
     session: Annotated[Session, Depends(get_session)],

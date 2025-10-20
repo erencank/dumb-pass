@@ -13,20 +13,7 @@ from tests.conftest import UserDeviceFixture
 def test_register_user(client) -> None:
     payload = _create_payload()
 
-    payload_dict = payload.user.model_dump()
-
-    binary_fields = [
-        "public_key",
-        "encrypted_private_key",
-        "device_public_key",
-        "device_encrypted_private_key_blob",
-        "device_encrypted_wrapping_key",
-    ]
-
-    for field in binary_fields:
-        if field in payload_dict and isinstance(payload_dict[field], bytes):
-            # Encode bytes to a Base64 string (e.g., b'abc' -> 'YWJj')
-            payload_dict[field] = base64.b64encode(payload_dict[field]).decode("ascii")
+    payload_dict = payload.user.model_dump(mode="json")
 
     response = client.post("auth/register", json=payload_dict)
     assert response.status_code == status.HTTP_201_CREATED

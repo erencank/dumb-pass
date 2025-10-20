@@ -1,3 +1,4 @@
+import base64
 import os
 import uuid
 from typing import NamedTuple
@@ -59,12 +60,12 @@ def _create_payload() -> TestUserPayload:
         # For the test, we can send a placeholder since the server just stores it.
         master_password_hash="placeholder_hash_from_client",
         master_password_salt=master_password_salt,
-        public_key=user_public_key_pem,
-        encrypted_private_key=encrypted_user_private_key,
+        public_key=base64.b64encode(user_public_key_pem).decode("ascii"),
+        encrypted_private_key=base64.b64encode(encrypted_user_private_key).decode("ascii"),
         device_name="Test Device",
-        device_public_key=device_public_key_pem,
-        device_encrypted_private_key_blob=encrypted_device_private_key_blob,
-        device_encrypted_wrapping_key=encrypted_wrapping_key,
+        device_public_key=base64.b64encode(device_public_key_pem).decode("ascii"),
+        device_encrypted_private_key_blob=base64.b64encode(encrypted_device_private_key_blob).decode("ascii"),
+        device_encrypted_wrapping_key=base64.b64encode(encrypted_wrapping_key).decode("ascii"),
     )
     return TestUserPayload(
         user=registration_payload,

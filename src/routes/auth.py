@@ -1,4 +1,3 @@
-import base64
 import os
 import uuid
 from typing import Annotated
@@ -10,7 +9,7 @@ from sqlmodel import Session, select
 from src.core.config import get_settings
 from src.crypto import verify_signature
 from src.db import get_session
-from src.models import ChallengeRequest, ChallengeResponse, Device, TokenRequest, TokenResponse, User, UserCreate
+from src.models import ChallengeRequest, ChallengeResponse, Device, TokenRequest, TokenResponse, User, UserCreate, UserCreateResponse
 from src.security import create_access_token, create_challenge_token, get_current_user
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -24,7 +23,7 @@ def read_users_me(current_user: Annotated[User, Depends(get_current_user)]):
     return {"email": current_user.email}
 
 
-@router.post("/register", status_code=status.HTTP_201_CREATED)
+@router.post("/register", response_model=UserCreateResponse, status_code=status.HTTP_201_CREATED)
 def register(request: UserCreate, session: Annotated[Session, Depends(get_session)]):
     existing_user = session.exec(select(User).where(User.email == request.email)).first()
 
@@ -34,7 +33,7 @@ def register(request: UserCreate, session: Annotated[Session, Depends(get_sessio
             detail="Email already registered",
         )
 
-    user = User.model_validate(request)
+    user = User.model_validate(request.model_dump())
 
     device = Device(
         device_name=request.device_name,
@@ -52,7 +51,7 @@ def register(request: UserCreate, session: Annotated[Session, Depends(get_sessio
     session.refresh(user)
     session.refresh(device)
 
-    return {"status": "success", "user_id": user.id, "device_id": device.id}
+    return UserCreateResponse(status="success", user_id=user.id, device_id=device.id)
 
 
 @router.post("/token/challenge", response_model=ChallengeResponse)
@@ -108,7 +107,7 @@ def login_with_challenge(request: TokenRequest, session: Annotated[Session, Depe
     # This proves the client has the device's private key
     is_valid_signature = verify_signature(
         public_key_bytes=device.public_key,
-        signature=base64.b64decode(request.signature),
+        signature=request.signature,
         data=nonce.encode(),
     )
 

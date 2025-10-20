@@ -1,14 +1,17 @@
+import base64
 import os
 from typing import Generator, NamedTuple
 
+import jwt
 import pytest
 from cryptography.hazmat.primitives.asymmetric import rsa
-from fastapi import FastAPI
+from fastapi import FastAPI, status
 from fastapi.testclient import TestClient
 from sqlmodel import Session, SQLModel, StaticPool, create_engine
 
 from src.core import config
-from src.core.config import Settings
+from src.core.config import Settings, get_settings
+from src.crypto import sign_data
 from src.db import get_session
 from src.main import app
 from src.models import Device, User
@@ -74,7 +77,7 @@ def registered_user_and_device(session: Session) -> UserDeviceFixture:
     payload = _create_payload()
     created_user = payload.user
 
-    user = User.model_validate(created_user)
+    user = User.model_validate(created_user.model_dump())
     device = Device(
         device_name=created_user.device_name,
         public_key=payload.user.device_public_key,
@@ -99,3 +102,43 @@ def registered_user_and_device(session: Session) -> UserDeviceFixture:
         device_private_key=payload.device_private_key,
         device_public_key=payload.device_public_key,
     )
+
+
+@pytest.fixture(name="authenticated_client")
+def authenticated_client_fixture(client: TestClient, user_and_device: UserDeviceFixture) -> TestClient:
+    """
+    Fixture that provides an authenticated client. It logs in the user
+    created by the `user_and_device` fixture and sets the Authorization header.
+    """
+    # Step 1: Get the challenge
+    challenge_payload = {
+        "email": user_and_device.user.email,
+        "device_id": str(user_and_device.device.id),
+    }
+    response = client.post("/auth/token/challenge", json=challenge_payload)
+    assert response.status_code == status.HTTP_200_OK
+    challenge_token = response.json()["challenge_token"]
+
+    # Step 2: Solve the challenge
+    settings = get_settings()
+    challenge_payload = jwt.decode(
+        challenge_token,
+        settings.challenge_secret_key,
+        algorithms=[settings.algorithm],
+    )
+    nonce = challenge_payload.get("nonce", "")
+    signature = sign_data(user_and_device.device_private_key, nonce.encode())
+
+    # Step 3: Get the access token
+    token_payload = {
+        "challenge_token": challenge_token,
+        "signature": base64.b64encode(signature).decode("ascii"),
+    }
+    response = client.post("/auth/token", json=token_payload)
+    assert response.status_code == status.HTTP_200_OK
+    access_token = response.json()["access_token"]
+
+    # Step 4: Set the authorization header for subsequent requests
+    client.headers["Authorization"] = f"Bearer {access_token}"
+
+    return client
