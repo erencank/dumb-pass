@@ -6,7 +6,7 @@ from typing import NamedTuple
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 
-from src.crypto import derive_encryption_key, encrypt_with_aes_gcm, generate_rsa_key_pair
+from src.crypto import OAEP_PADDING, derive_encryption_key, encrypt_with_aes_gcm, generate_rsa_key_pair
 from src.models import UserCreate
 
 
@@ -48,7 +48,7 @@ def _create_payload() -> TestUserPayload:
     encrypted_device_private_key_blob = encrypt_with_aes_gcm(device_private_key_pem, wrapping_key)
 
     # E.3. Encrypt the small AES wrapping key with the USER's PUBLIC RSA key
-    encrypted_wrapping_key = user_public_key.encrypt(wrapping_key, padding.OAEP(mgf=padding.MGF1(algorithm=hashes.SHA256()), algorithm=hashes.SHA256(), label=None))
+    encrypted_wrapping_key = user_public_key.encrypt(wrapping_key, OAEP_PADDING)
 
     # F. Serialize public keys to bytes for the payload
     user_public_key_pem = user_public_key.public_bytes(encoding=serialization.Encoding.PEM, format=serialization.PublicFormat.SubjectPublicKeyInfo)

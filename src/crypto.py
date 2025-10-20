@@ -80,11 +80,8 @@ def sign_data(private_key: rsa.RSAPrivateKey, data: bytes) -> bytes:
     """Signs data with the given private key using PSS padding."""
     return private_key.sign(
         data,
-        padding.PSS(
-            mgf=padding.MGF1(hashes.SHA256()),
-            salt_length=padding.PSS.MAX_LENGTH,
-        ),
-        hashes.SHA256(),
+        algorithm=hashes.SHA256(),
+        padding=PSS_PADDING,
     )
 
 
@@ -97,12 +94,13 @@ def verify_signature(public_key_bytes: bytes, signature: bytes, data: bytes) -> 
             signature,
             data,
             algorithm=hashes.SHA256(),
-            padding=padding.PSS(
-                mgf=padding.MGF1(hashes.SHA256()),
-                salt_length=padding.PSS.MAX_LENGTH,
-            ),
+            padding=PSS_PADDING,
         )
         return True
     except Exception:
         # This will catch invalid signatures, key formats, etc.
         return False
+
+
+OAEP_PADDING = padding.OAEP(mgf=padding.MGF1(algorithm=hashes.SHA256()), algorithm=hashes.SHA256(), label=None)
+PSS_PADDING = padding.PSS(mgf=padding.MGF1(algorithm=hashes.SHA256()), salt_length=padding.PSS.MAX_LENGTH)
