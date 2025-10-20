@@ -3,7 +3,12 @@ import os
 import pytest
 from cryptography.exceptions import InvalidKey, InvalidTag
 
-from src.crypto import decrypt_with_aes_gcm, derive_encryption_key, encrypt_with_aes_gcm, verify_derived_encryption_key
+from src.crypto import (
+    decrypt_with_aes_gcm,
+    derive_encryption_key,
+    encrypt_with_aes_gcm,
+    verify_derived_encryption_key,
+)
 
 
 def test_derived_encryption_key() -> None:

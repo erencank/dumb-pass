@@ -9,7 +9,9 @@ from src.crypto import OAEP_PADDING, decrypt_with_aes_gcm, encrypt_with_aes_gcm
 from tests.conftest import UserDeviceFixture
 
 
-def test_create_and_get_vault_items(authenticated_client, user_and_device: UserDeviceFixture) -> None:
+def test_create_and_get_vault_items(
+    authenticated_client, user_and_device: UserDeviceFixture
+) -> None:
     """
     Tests the "happy path": an authenticated user can create a vault item
     and then retrieve it.
@@ -18,7 +20,12 @@ def test_create_and_get_vault_items(authenticated_client, user_and_device: UserD
     _item_key = os.urandom(32)  # A unique symmetric key for this item
     secret_data = b'{"username": "testuser", "password": "supersecret"}'
     encrypted_blob = encrypt_with_aes_gcm(secret_data, _item_key)
-    _encrypted_item_key = user_and_device.user_public_key.encrypt(_item_key, padding.OAEP(mgf=padding.MGF1(algorithm=hashes.SHA256()), algorithm=hashes.SHA256(), label=None))
+    _encrypted_item_key = user_and_device.user_public_key.encrypt(
+        _item_key,
+        padding.OAEP(
+            mgf=padding.MGF1(algorithm=hashes.SHA256()), algorithm=hashes.SHA256(), label=None
+        ),
+    )
 
     # The client would send these two encrypted blobs to the server.
     # We encode them as base64 strings to send them in a JSON payload.
@@ -51,7 +58,9 @@ def test_create_and_get_vault_items(authenticated_client, user_and_device: UserD
     encrypted_item_key_bytes = base64.b64decode(items[0]["item_key"])
     encrypted_blob_bytes = base64.b64decode(items[0]["blob"])
 
-    decrypted_item_key = user_and_device.user_private_key.decrypt(encrypted_item_key_bytes, OAEP_PADDING)
+    decrypted_item_key = user_and_device.user_private_key.decrypt(
+        encrypted_item_key_bytes, OAEP_PADDING
+    )
     decrypted_blob = decrypt_with_aes_gcm(encrypted_blob_bytes, decrypted_item_key)
 
     assert decrypted_blob == secret_data

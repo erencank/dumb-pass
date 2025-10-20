@@ -87,7 +87,9 @@ def sign_data(private_key: rsa.RSAPrivateKey, data: bytes) -> bytes:
 
 def verify_signature(public_key_bytes: bytes, signature: bytes, data: bytes) -> bool:
     try:
-        public_key: rsa.RSAPublicKey = cast(rsa.RSAPublicKey, serialization.load_pem_public_key(public_key_bytes))
+        public_key: rsa.RSAPublicKey = cast(
+            rsa.RSAPublicKey, serialization.load_pem_public_key(public_key_bytes)
+        )
         if not isinstance(public_key, rsa.RSAPublicKey):
             raise ValueError("verify_signature only supports RSAPublicKey type")
         public_key.verify(
@@ -102,5 +104,9 @@ def verify_signature(public_key_bytes: bytes, signature: bytes, data: bytes) -> 
         return False
 
 
-OAEP_PADDING = padding.OAEP(mgf=padding.MGF1(algorithm=hashes.SHA256()), algorithm=hashes.SHA256(), label=None)
-PSS_PADDING = padding.PSS(mgf=padding.MGF1(algorithm=hashes.SHA256()), salt_length=padding.PSS.MAX_LENGTH)
+OAEP_PADDING = padding.OAEP(
+    mgf=padding.MGF1(algorithm=hashes.SHA256()), algorithm=hashes.SHA256(), label=None
+)
+PSS_PADDING = padding.PSS(
+    mgf=padding.MGF1(algorithm=hashes.SHA256()), salt_length=padding.PSS.MAX_LENGTH
+)

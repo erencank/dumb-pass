@@ -9,7 +9,16 @@ from sqlmodel import Session, select
 from src.core.config import get_settings
 from src.crypto import verify_signature
 from src.db import get_session
-from src.models import ChallengeRequest, ChallengeResponse, Device, TokenRequest, TokenResponse, User, UserCreate, UserCreateResponse
+from src.models import (
+    ChallengeRequest,
+    ChallengeResponse,
+    Device,
+    TokenRequest,
+    TokenResponse,
+    User,
+    UserCreate,
+    UserCreateResponse,
+)
 from src.security import create_access_token, create_challenge_token, get_current_user
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -55,7 +64,9 @@ def register(request: UserCreate, session: Annotated[Session, Depends(get_sessio
 
 
 @router.post("/token/challenge", response_model=ChallengeResponse)
-def get_login_challenge(request: ChallengeRequest, session: Annotated[Session, Depends(get_session)]):
+def get_login_challenge(
+    request: ChallengeRequest, session: Annotated[Session, Depends(get_session)]
+):
     """
     Step 1 of login.
     Client provides email and device ID.
@@ -67,7 +78,9 @@ def get_login_challenge(request: ChallengeRequest, session: Annotated[Session, D
         # We return a plain 401 since we don't want to give more info than needed
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
 
-    device = session.exec(select(Device).where(Device.id == request.device_id, Device.user_id == user.id)).first()
+    device = session.exec(
+        select(Device).where(Device.id == request.device_id, Device.user_id == user.id)
+    ).first()
     if not device:
         # We return a plain 401 since we don't want to give more info than needed
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
@@ -92,7 +105,11 @@ def login_with_challenge(request: TokenRequest, session: Annotated[Session, Depe
     """
     try:
         # Decode the challenge token to get the original nonce and IDs
-        payload = jwt.decode(request.challenge_token, get_settings().challenge_secret_key, algorithms=get_settings().algorithm)
+        payload = jwt.decode(
+            request.challenge_token,
+            get_settings().challenge_secret_key,
+            algorithms=get_settings().algorithm,
+        )
         user_id = uuid.UUID(payload.get("user_id"))
         device_id = uuid.UUID(payload.get("device_id"))
         nonce = payload.get("nonce")

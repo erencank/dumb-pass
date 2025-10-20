@@ -32,7 +32,9 @@ def test_login_challenge(client, user_and_device: UserDeviceFixture) -> None:
     challenge_token = response_data["challenge_token"]
 
     settings = get_settings()
-    challenge_payload = jwt.decode(challenge_token, algorithms=[settings.algorithm], options={"verify_signature": False})
+    challenge_payload = jwt.decode(
+        challenge_token, algorithms=[settings.algorithm], options={"verify_signature": False}
+    )
     nonce = challenge_payload.get("nonce")
     assert nonce is not None
 
@@ -40,7 +42,9 @@ def test_login_challenge(client, user_and_device: UserDeviceFixture) -> None:
 
     token_payload = {
         "challenge_token": challenge_token,
-        "signature": base64.b64encode(signature).decode("ascii"),  # Send signature as a B64 in JSON
+        "signature": base64.b64encode(signature).decode(
+            "ascii"
+        ),  # Send signature as a B64 in JSON
     }
     response = client.post("/auth/token", json=token_payload)
     assert response.status_code == status.HTTP_200_OK
@@ -77,7 +81,9 @@ def test_invalid_response_login_challenge(client, user_and_device: UserDeviceFix
     challenge_token = response_data["challenge_token"]
 
     settings = get_settings()
-    challenge_payload = jwt.decode(challenge_token, algorithms=[settings.algorithm], options={"verify_signature": False})
+    challenge_payload = jwt.decode(
+        challenge_token, algorithms=[settings.algorithm], options={"verify_signature": False}
+    )
     nonce = challenge_payload.get("nonce")
     assert nonce is not None
 
