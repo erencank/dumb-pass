@@ -1,10 +1,11 @@
 import base64
+import json
 import os
 import uuid
-from typing import NamedTuple
+from typing import Any, NamedTuple
 
-from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import padding, rsa
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
 
 from src.crypto import (
     OAEP_PADDING,
@@ -12,7 +13,7 @@ from src.crypto import (
     encrypt_with_aes_gcm,
     generate_rsa_key_pair,
 )
-from src.models import UserCreate
+from src.models import Device, User, UserCreate, VaultItem
 
 
 class TestUserPayload(NamedTuple):
@@ -60,12 +61,8 @@ def _create_payload() -> TestUserPayload:
     encrypted_wrapping_key = user_public_key.encrypt(wrapping_key, OAEP_PADDING)
 
     # F. Serialize public keys to bytes for the payload
-    user_public_key_pem = user_public_key.public_bytes(
-        encoding=serialization.Encoding.PEM, format=serialization.PublicFormat.SubjectPublicKeyInfo
-    )
-    device_public_key_pem = device_public_key.public_bytes(
-        encoding=serialization.Encoding.PEM, format=serialization.PublicFormat.SubjectPublicKeyInfo
-    )
+    user_public_key_pem = user_public_key.public_bytes(encoding=serialization.Encoding.PEM, format=serialization.PublicFormat.SubjectPublicKeyInfo)
+    device_public_key_pem = device_public_key.public_bytes(encoding=serialization.Encoding.PEM, format=serialization.PublicFormat.SubjectPublicKeyInfo)
 
     registration_payload = UserCreate(
         email=f"testuser_{uuid.uuid4().hex}@example.com",
@@ -77,9 +74,7 @@ def _create_payload() -> TestUserPayload:
         encrypted_private_key=base64.b64encode(encrypted_user_private_key).decode("ascii"),
         device_name="Test Device",
         device_public_key=base64.b64encode(device_public_key_pem).decode("ascii"),
-        device_encrypted_private_key_blob=base64.b64encode(
-            encrypted_device_private_key_blob
-        ).decode("ascii"),
+        device_encrypted_private_key_blob=base64.b64encode(encrypted_device_private_key_blob).decode("ascii"),
         device_encrypted_wrapping_key=base64.b64encode(encrypted_wrapping_key).decode("ascii"),
     )
     return TestUserPayload(
@@ -90,3 +85,31 @@ def _create_payload() -> TestUserPayload:
         device_private_key=device_private_key,
         device_public_key=device_public_key,
     )
+
+
+class UserDeviceFixture(NamedTuple):
+    user: User
+    device: Device
+    master_password: str
+    user_private_key: rsa.RSAPrivateKey
+    user_public_key: rsa.RSAPublicKey
+    device_private_key: rsa.RSAPrivateKey
+    device_public_key: rsa.RSAPublicKey
+
+
+def create_vault_item(user_device: UserDeviceFixture, data: dict[str, Any]) -> VaultItem:
+    _item_key = os.urandom(32)  # A unique symmetric key for this item
+    secret_data = _dict_to_bytes(data)
+    encrypted_blob = encrypt_with_aes_gcm(secret_data, _item_key)
+    _encrypted_item_key = user_device.user_public_key.encrypt(_item_key, padding=OAEP_PADDING)
+
+    item = VaultItem(blob=encrypted_blob, item_key=_encrypted_item_key, user_id=user_device.user.id)
+    return item
+
+
+def _dict_to_bytes(data: dict[Any, Any]) -> bytes:
+    return json.dumps(data).encode("utf-8")
+
+
+def _bytes_to_dict(data: bytes) -> dict[Any, Any]:
+    return json.loads(data.decode("utf-8"))

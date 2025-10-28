@@ -1,10 +1,9 @@
 import base64
 import os
-from typing import Generator, NamedTuple
+from typing import Generator
 
 import jwt
 import pytest
-from cryptography.hazmat.primitives.asymmetric import rsa
 from fastapi import FastAPI, status
 from fastapi.testclient import TestClient
 from sqlmodel import Session, SQLModel, StaticPool, create_engine
@@ -14,15 +13,13 @@ from src.core.config import Settings, get_settings
 from src.crypto import sign_data
 from src.db import get_session
 from src.main import app
-from src.models import Device, User
-from tests.auth_utils import _create_payload
+from src.models import Device, User, VaultItem
+from tests.utils import UserDeviceFixture, _create_payload, create_vault_item
 
 
 @pytest.fixture(name="session")
 def session_fixture():
-    engine = create_engine(
-        "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
-    )
+    engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
     SQLModel.metadata.create_all(engine)
     with Session(engine) as session:
         yield session
@@ -54,20 +51,10 @@ def test_settings() -> Generator[Settings, Settings, None]:
 
 
 @pytest.fixture
-def client(test_app) -> Generator[TestClient, TestClient, None]:
+def client(test_app: FastAPI) -> Generator[TestClient, TestClient, None]:
     client = TestClient(test_app, raise_server_exceptions=False)
 
     yield client
-
-
-class UserDeviceFixture(NamedTuple):
-    user: User
-    device: Device
-    master_password: str
-    user_private_key: rsa.RSAPrivateKey
-    user_public_key: rsa.RSAPublicKey
-    device_private_key: rsa.RSAPrivateKey
-    device_public_key: rsa.RSAPublicKey
 
 
 @pytest.fixture(name="user_and_device")
@@ -106,10 +93,20 @@ def registered_user_and_device(session: Session) -> UserDeviceFixture:
     )
 
 
+@pytest.fixture(name="user_vault_item")
+def user_vault_item_fixture(user_and_device: UserDeviceFixture, session: Session) -> VaultItem:
+    data = {"email": "foo@bar.com", "password": "foobar123"}
+    item = create_vault_item(user_device=user_and_device, data=data)
+
+    session.add(item)
+    session.commit()
+    session.refresh(item)
+
+    return item
+
+
 @pytest.fixture(name="authenticated_client")
-def authenticated_client_fixture(
-    client: TestClient, user_and_device: UserDeviceFixture
-) -> TestClient:
+def authenticated_client_fixture(client: TestClient, user_and_device: UserDeviceFixture) -> TestClient:
     """
     Fixture that provides an authenticated client. It logs in the user
     created by the `user_and_device` fixture and sets the Authorization header.
