@@ -9,6 +9,7 @@ from src.db import init_db
 
 from .core.config import get_settings
 from .routes.auth import router as auth_router
+from .routes.links import router as links_router
 from .routes.vault import router as vault_router
 
 settings = get_settings()
@@ -29,6 +30,7 @@ def get_app() -> FastAPI:
     app = FastAPI(title="Password Manager API", lifespan=lifespan)
     app.include_router(auth_router)
     app.include_router(vault_router)
+    app.include_router(links_router)
     return app
 
 
