@@ -18,7 +18,7 @@ def create_vault_item(
 ):
     "Create a new encrypted vault item for the authenticated user."
     # The client sends pre-encrypted data. The server just stores it.
-    db_item = VaultItem(blob=item.blob, item_key=item.item_key, user_id=current_user.id)
+    db_item = VaultItem.model_validate(item, update={"user_id": current_user.id}, from_attributes=True)
 
     session.add(db_item)
     session.commit()

@@ -42,7 +42,7 @@ def register(request: UserCreate, session: Annotated[Session, Depends(get_sessio
             detail="Email already registered",
         )
 
-    user = User.model_validate(request.model_dump())
+    user = User.model_validate(request)
 
     device = Device(
         device_name=request.device_name,
@@ -64,9 +64,7 @@ def register(request: UserCreate, session: Annotated[Session, Depends(get_sessio
 
 
 @router.post("/token/challenge", response_model=ChallengeResponse)
-def get_login_challenge(
-    request: ChallengeRequest, session: Annotated[Session, Depends(get_session)]
-):
+def get_login_challenge(request: ChallengeRequest, session: Annotated[Session, Depends(get_session)]):
     """
     Step 1 of login.
     Client provides email and device ID.
@@ -78,9 +76,7 @@ def get_login_challenge(
         # We return a plain 401 since we don't want to give more info than needed
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
 
-    device = session.exec(
-        select(Device).where(Device.id == request.device_id, Device.user_id == user.id)
-    ).first()
+    device = session.exec(select(Device).where(Device.id == request.device_id, Device.user_id == user.id)).first()
     if not device:
         # We return a plain 401 since we don't want to give more info than needed
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)

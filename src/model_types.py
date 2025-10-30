@@ -1,7 +1,11 @@
 # in src/models.py
+import base64
+import binascii
 from datetime import datetime, timezone  # Make sure timezone is imported
-from typing import Any
+from typing import Annotated, Any, Literal
 
+from pydantic import EncodedBytes, EncoderProtocol
+from pydantic_core import PydanticCustomError
 from sqlalchemy import DateTime, TypeDecorator
 
 
@@ -30,3 +34,30 @@ class AwareDateTime(TypeDecorator):
         if value is not None:
             return value.replace(tzinfo=timezone.utc)
         return None
+
+
+class PythonAndBase64Encoder(EncoderProtocol):
+    @classmethod
+    def decode(cls, data: bytes) -> bytes:
+        try:
+            return base64.b64decode(data, validate=True)
+        except (ValueError, binascii.Error) as e:
+            if isinstance(data, bytes):
+                # This enables us to do Model.model_validate(object)
+                return data
+            raise PydanticCustomError(
+                "base64_decode",
+                "Base64 decoding error: '{error}'",
+                {"error": str(e)},
+            )
+
+    @classmethod
+    def encode(cls, value: bytes) -> bytes:
+        return base64.b64encode(value)
+
+    @classmethod
+    def get_json_format(cls) -> Literal["base64"]:
+        return "base64"
+
+
+B64Bytes = Annotated[bytes, EncodedBytes(encoder=PythonAndBase64Encoder)]

@@ -25,13 +25,7 @@ def create_public_link(
 
     expiration = datetime.now(timezone.utc) + timedelta(hours=request.expires_in_hours)
 
-    new_link = PublicLink(
-        vault_item_id=request.vault_item_id,
-        encrypted_blob=request.encrypted_blob,
-        expires_at=expiration,
-        max_views=request.max_views,
-        user_id=current_user.id,
-    )
+    new_link = PublicLink.model_validate(request, update={"expires_at": expiration, "user_id": current_user.id}, from_attributes=True)
 
     session.add(new_link)
     session.commit()
@@ -67,4 +61,4 @@ def get_public_link_content(link_id: uuid.UUID, session: Annotated[Session, Depe
     session.commit()
     session.refresh(link)
 
-    return PublicLinkReadResponse(contents=link.model_dump()["encrypted_blob"], expiration_timestamp=link.expires_at.timestamp())
+    return PublicLinkReadResponse(contents=link.encrypted_blob, expiration_timestamp=link.expires_at.timestamp())

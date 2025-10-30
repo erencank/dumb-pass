@@ -2,31 +2,33 @@ import uuid
 from datetime import datetime
 from typing import Literal
 
-from pydantic import AwareDatetime, Base64Bytes, EmailStr
+from pydantic import AwareDatetime, EmailStr
 from sqlmodel import Column, Field, LargeBinary, Relationship, SQLModel
 
 from src import model_types
 from src.utils import datetime_utcnow
+
+from .model_types import B64Bytes
 
 
 class UserBase(SQLModel):
     email: EmailStr
     master_password_hash: str
     master_password_salt: str
-    public_key: Base64Bytes = Field(sa_column=Column(LargeBinary, nullable=False))
-    encrypted_private_key: Base64Bytes = Field(sa_column=Column(LargeBinary, nullable=False))
+    public_key: B64Bytes = Field(sa_column=Column(LargeBinary, nullable=False))
+    encrypted_private_key: B64Bytes = Field(sa_column=Column(LargeBinary, nullable=False))
 
 
 class DeviceBase(SQLModel):
     device_name: str
-    public_key: Base64Bytes = Field(sa_column=Column(LargeBinary, nullable=False))
-    encrypted_private_key_blob: Base64Bytes = Field(sa_column=Column(LargeBinary, nullable=False))
-    encrypted_wrapping_key: Base64Bytes = Field(sa_column=Column(LargeBinary, nullable=False))
+    public_key: B64Bytes = Field(sa_column=Column(LargeBinary, nullable=False))
+    encrypted_private_key_blob: B64Bytes = Field(sa_column=Column(LargeBinary, nullable=False))
+    encrypted_wrapping_key: B64Bytes = Field(sa_column=Column(LargeBinary, nullable=False))
 
 
 class VaultItemBase(SQLModel):
-    blob: Base64Bytes = Field(sa_column=Column(LargeBinary, nullable=False))
-    item_key: Base64Bytes = Field(sa_column=Column(LargeBinary, nullable=False))
+    blob: B64Bytes = Field(sa_column=Column(LargeBinary, nullable=False))
+    item_key: B64Bytes = Field(sa_column=Column(LargeBinary, nullable=False))
 
 
 # --- DB Tables ---
@@ -43,7 +45,7 @@ class User(UserBase, table=True):
 
 class Device(DeviceBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True, index=True)
-    signature: Base64Bytes | None = Field(default=None, sa_column=Column(LargeBinary))
+    signature: B64Bytes | None = Field(default=None, sa_column=Column(LargeBinary))
 
     user_id: uuid.UUID = Field(foreign_key="user.id")
     user: User = Relationship(back_populates="devices")
@@ -68,7 +70,7 @@ class VaultItem(VaultItemBase, table=True):
 class PublicLink(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True, index=True)
 
-    encrypted_blob: Base64Bytes = Field(sa_column=Column(LargeBinary, nullable=False))
+    encrypted_blob: B64Bytes = Field(sa_column=Column(LargeBinary, nullable=False))
 
     expires_at: AwareDatetime = Field(sa_column=Column(model_types.AwareDateTime))
     max_views: int | None = Field(default=None)
@@ -84,9 +86,9 @@ class PublicLink(SQLModel, table=True):
 # --- API Models ---
 class UserCreate(UserBase):
     device_name: str
-    device_public_key: Base64Bytes
-    device_encrypted_private_key_blob: Base64Bytes
-    device_encrypted_wrapping_key: Base64Bytes
+    device_public_key: B64Bytes
+    device_encrypted_private_key_blob: B64Bytes
+    device_encrypted_wrapping_key: B64Bytes
 
 
 class DeviceCreate(DeviceBase):
@@ -95,7 +97,7 @@ class DeviceCreate(DeviceBase):
 
 class DeviceApprove(SQLModel):
     device_id_to_approve: uuid.UUID
-    signature: Base64Bytes
+    signature: B64Bytes
 
 
 class VaultItemCreate(VaultItemBase):
@@ -107,8 +109,8 @@ class VaultItemRead(VaultItemBase):
 
 
 class VaultItemUpdate(SQLModel):
-    blob: Base64Bytes | None
-    item_key: Base64Bytes | None
+    blob: B64Bytes | None
+    item_key: B64Bytes | None
 
 
 # --- API Data Models for Authentication ---
@@ -136,7 +138,7 @@ class TokenRequest(SQLModel):
     """Client sends this back after solving the challenge."""
 
     challenge_token: str
-    signature: Base64Bytes  # The signature proves the client has the device's private key.
+    signature: B64Bytes  # The signature proves the client has the device's private key.
 
 
 class TokenResponse(SQLModel):
@@ -153,7 +155,7 @@ class PublicLinkCreateRequest(SQLModel):
     """Client sends this to create a new shareable link."""
 
     vault_item_id: uuid.UUID
-    encrypted_blob: Base64Bytes
+    encrypted_blob: B64Bytes
     expires_in_hours: int = 24  # e.g., 1, 24, 168 (7 days)
     max_views: int | None = None
 
@@ -168,5 +170,5 @@ class PublicLinkCreateResponse(SQLModel):
 class PublicLinkReadResponse(SQLModel):
     """Server responds with the encrypted content for a public viewer."""
 
-    contents: Base64Bytes
+    contents: B64Bytes
     expiration_timestamp: float
