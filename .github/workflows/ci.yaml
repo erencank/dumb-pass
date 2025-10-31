@@ -40,4 +40,16 @@ jobs:
         run: uv run ty check
 
       - name: Run Pytest
+        env:
+          SECRET_KEY: giga-secret-key
+          CHALLENGE_SECRET_KEY: challenge-key-so-secret
+          POSTGRES_PASSWORD: testpw
+
+          POSTGRES_USER: "test_user"
+          POSTGRES_DB: "test_db"
+          DATABASE_URL: "postgresql://test_user:testpw@localhost:5432/test_db"
+
+          ALGORITHM: "HS256"
+          ACCESS_TOKEN_EXPIRATION_MINUTES: 15
+          CHALLENGE_TOKEN_EXPIRATION_MINUTES: 2
         run: uv run pytest tests
