@@ -1,0 +1,40 @@
+# This workflow is named "Python CI Checks"
+name: Python CI Checks
+
+on:
+  push:
+    branches: ["main"]
+
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Install dependencies
+        run: uv pip install -e .[dev]
+
+      - name: Run Ruff Formatter Check
+        run: uv run ruff format --check .
+
+      - name: Run Ruff Linter
+        run: uv run ruff check .
+
+      - name: Run Ty Type Checker
+        run: uv run ty check
+
+      - name: Run Pytest
+        run: uv run pytest tests

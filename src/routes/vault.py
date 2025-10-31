@@ -39,8 +39,8 @@ def get_vault_items(
     query = (
         select(VaultItem)
         .where(VaultItem.user_id == current_user.id)
-        .options(selectinload(VaultItem.public_links))
-    )  # type: ignore[arg-type]
+        .options(selectinload(VaultItem.public_links))  # type: ignore[arg-type]
+    )
     items = session.exec(query).all()
     return items
 
@@ -55,8 +55,8 @@ def get_vault_item_by_id(
     query = (
         select(VaultItem)
         .where(VaultItem.user_id == current_user.id, VaultItem.id == item_id)
-        .options(selectinload(VaultItem.public_links))
-    )  # type: ignore[arg-type]
+        .options(selectinload(VaultItem.public_links))  # type: ignore[arg-type]
+    )
     item = session.exec(query).first()
 
     if not item:

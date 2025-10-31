@@ -12,14 +12,21 @@ dependencies = [
     "pwdlib[argon2]>=0.2.1",
     "pydantic-settings>=2.11.0",
     "pyjwt>=2.10.1",
-    "ruff>=0.14.0",
     "sqlalchemy>=2.0.43",
     "sqlmodel>=0.0.27",
     "uvicorn>=0.37.0",
 ]
 
 [dependency-groups]
-dev = ["pytest>=8.4.2"]
+dev = [
+    "pytest>=8.4.2",
+    "ruff>=0.14.0",
+    "ty>=0.0.1a25",
+    "types-pyyaml>=6.0.12.20250915",
+]
 
 [tool.ruff]
 line-length = 99
+
+[tool.ty.environment]
+root = ["./"]
