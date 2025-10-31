@@ -110,7 +110,10 @@ def create_vault_item(user_device: UserDeviceFixture, data: dict[str, Any]) -> V
     _encrypted_item_key = user_device.user_public_key.encrypt(_item_key, padding=OAEP_PADDING)
 
     item = VaultItem(
-        blob=encrypted_blob, item_key=_encrypted_item_key, user_id=user_device.user.id
+        blob=encrypted_blob,
+        item_key=_encrypted_item_key,
+        user_id=user_device.user.id,
+        vault_id=user_device.user.default_vault_id,
     )
     return item
 

@@ -6,9 +6,12 @@ from fastapi import status
 
 from src.crypto import decrypt_with_aes_gcm, encrypt_with_aes_gcm
 from src.models import VaultItem
+from tests.utils import UserDeviceFixture
 
 
-def test_create_share_link(authenticated_client, user_vault_item: VaultItem) -> None:
+def test_create_share_link(
+    authenticated_client, user_and_device: UserDeviceFixture, user_vault_item: VaultItem
+) -> None:
     start_datetime = datetime.now(UTC) + timedelta(hours=24)
     _link_key = os.urandom(32)
     secret_data = b'{"username": "testuser", "password": "supersecret"}'
@@ -44,7 +47,8 @@ def test_create_share_link(authenticated_client, user_vault_item: VaultItem) -> 
     assert start_datetime > expiration_datetime < end_datetime
 
     # Check if doing a GET for the vault item returns the public link
-    response = authenticated_client.get("/vault/")
+    vault_id = str(user_and_device.user.default_vault_id)
+    response = authenticated_client.get(f"/items/by-vault/{vault_id}")
     assert response.status_code == status.HTTP_200_OK
 
     items = response.json()

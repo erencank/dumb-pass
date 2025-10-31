@@ -9,7 +9,7 @@ from src.crypto import OAEP_PADDING, decrypt_with_aes_gcm, encrypt_with_aes_gcm
 from tests.utils import UserDeviceFixture
 
 
-def test_create_and_get_vault_items(
+def test_create_and_get_vault_items_from_default(
     authenticated_client, user_and_device: UserDeviceFixture
 ) -> None:
     """
@@ -26,6 +26,7 @@ def test_create_and_get_vault_items(
             mgf=padding.MGF1(algorithm=hashes.SHA256()), algorithm=hashes.SHA256(), label=None
         ),
     )
+    vault_id = str(user_and_device.user.default_vault_id)
 
     # The client would send these two encrypted blobs to the server.
     # We encode them as base64 strings to send them in a JSON payload.
@@ -33,10 +34,10 @@ def test_create_and_get_vault_items(
     blob = base64.b64encode(encrypted_blob).decode("utf-8")
     item_key = base64.b64encode(_encrypted_item_key).decode("utf-8")
 
-    payload = {"blob": blob, "item_key": item_key}
+    payload = {"blob": blob, "item_key": item_key, "vault_id": vault_id}
 
     # --- 2. CREATE THE VAULT ITEM VIA API ---
-    response = authenticated_client.post("/vault/", json=payload)
+    response = authenticated_client.post("/items/", json=payload)
     assert response.status_code == status.HTTP_201_CREATED
 
     created_item = response.json()
@@ -44,9 +45,10 @@ def test_create_and_get_vault_items(
     # Verify the server returns the same encrypted data it received
     assert created_item["blob"] == blob
     assert created_item["item_key"] == item_key
+    assert created_item["vault_id"] == vault_id
 
     # --- 3. RETRIEVE ALL VAULT ITEMS FOR THE USER ---
-    response = authenticated_client.get("/vault/")
+    response = authenticated_client.get(f"/items/by-vault/{vault_id}")
     assert response.status_code == status.HTTP_200_OK
 
     items = response.json()
