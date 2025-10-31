@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Literal
 
-from pydantic import AwareDatetime, EmailStr
+from pydantic import AwareDatetime, EmailStr, computed_field
 from sqlmodel import Column, Field, LargeBinary, Relationship, SQLModel
 
 from src import model_types
@@ -82,6 +82,11 @@ class PublicLink(SQLModel, table=True):
     vault_item_id: uuid.UUID = Field(foreign_key="vaultitem.id")
     vault_item: VaultItem = Relationship(back_populates="public_links")
 
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def expiration_timestamp(self) -> float:
+        return self.expires_at.timestamp()
+
 
 # --- API Models ---
 class UserCreate(UserBase):
@@ -104,8 +109,23 @@ class VaultItemCreate(VaultItemBase):
     pass
 
 
+class VaultItemReadPublicLink(SQLModel):
+    id: uuid.UUID
+    expires_at: AwareDatetime = Field(exclude=True)
+    current_views: int
+    max_views: int | None
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def expiration_timestamp(self) -> float:
+        return self.expires_at.timestamp()
+
+
 class VaultItemRead(VaultItemBase):
     id: uuid.UUID
+    created_at: datetime
+    updated_at: datetime
+    public_links: list[VaultItemReadPublicLink] = []
 
 
 class VaultItemUpdate(SQLModel):

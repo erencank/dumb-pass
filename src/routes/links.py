@@ -25,13 +25,13 @@ def create_public_link(
 
     expiration = datetime.now(timezone.utc) + timedelta(hours=request.expires_in_hours)
 
-    new_link = PublicLink.model_validate(request, update={"expires_at": expiration, "user_id": current_user.id}, from_attributes=True)
+    link = PublicLink.model_validate(request, update={"expires_at": expiration, "user_id": current_user.id}, from_attributes=True)
 
-    session.add(new_link)
+    session.add(link)
     session.commit()
-    session.refresh(new_link)
+    session.refresh(link)
 
-    return PublicLinkCreateResponse(link_id=new_link.id, expiration_timestamp=expiration.timestamp())
+    return PublicLinkCreateResponse(link_id=link.id, expiration_timestamp=link.expiration_timestamp)
 
 
 @router.get("/{link_id}", response_model=PublicLinkReadResponse)
@@ -61,4 +61,4 @@ def get_public_link_content(link_id: uuid.UUID, session: Annotated[Session, Depe
     session.commit()
     session.refresh(link)
 
-    return PublicLinkReadResponse(contents=link.encrypted_blob, expiration_timestamp=link.expires_at.timestamp())
+    return PublicLinkReadResponse(contents=link.encrypted_blob, expiration_timestamp=link.expiration_timestamp)

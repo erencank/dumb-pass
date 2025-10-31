@@ -38,3 +38,17 @@ def test_create_share_link(authenticated_client, user_vault_item: VaultItem) -> 
     expiration_datetime = datetime.fromtimestamp(retrieved_link["expiration_timestamp"], UTC)
 
     assert start_datetime > expiration_datetime < end_datetime
+
+    # Check if doing a GET for the vault item returns the public link
+    response = authenticated_client.get("/vault/")
+    assert response.status_code == status.HTTP_200_OK
+
+    items = response.json()
+    assert len(items) == 1
+    item = items[0]
+    assert len(item["public_links"]) == 1
+    vault_link = item["public_links"][0]
+
+    assert vault_link["current_views"] == 1
+    assert vault_link["max_views"] is None
+    assert expiration_datetime == datetime.fromtimestamp(vault_link["expiration_timestamp"], UTC)
