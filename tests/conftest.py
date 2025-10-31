@@ -13,7 +13,7 @@ from src.core.config import Settings, get_settings
 from src.crypto import sign_data
 from src.db import get_session
 from src.main import app
-from src.models import Device, User, VaultItem
+from src.models import Device, User, Vault, VaultItem
 from tests.utils import UserDeviceFixture, _create_payload, create_vault_item
 
 
@@ -78,11 +78,19 @@ def registered_user_and_device(session: Session) -> UserDeviceFixture:
         user=user,
     )
 
+    default_vault = Vault(name="Default", owner=user)
+
     session.add(user)
     session.add(device)
+    session.add(default_vault)
     session.commit()
     session.refresh(user)
     session.refresh(device)
+
+    user.default_vault_id = default_vault.id
+    session.add(user)
+    session.commit()
+    session.refresh(user)
 
     return UserDeviceFixture(
         user=user,

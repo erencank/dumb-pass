@@ -18,6 +18,7 @@ from src.models import (
     User,
     UserCreate,
     UserCreateResponse,
+    Vault,
 )
 from src.security import create_access_token, create_challenge_token, get_current_user
 
@@ -39,7 +40,7 @@ def register(request: UserCreate, session: Annotated[Session, Depends(get_sessio
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered",
+            detail="User already exists",
         )
 
     user = User.model_validate(request)
@@ -53,10 +54,21 @@ def register(request: UserCreate, session: Annotated[Session, Depends(get_sessio
         user=user,  # Link the device to the new user
     )
 
+    default_vault = Vault(name="Default", owner=user)
+
     session.add(user)
     session.add(device)
-    session.commit()
+    session.add(default_vault)
 
+    # Generate vault id
+    session.commit()
+    session.refresh(user)
+    session.refresh(default_vault)
+
+    # Set user's default vault to created id
+    user.default_vault_id = default_vault.id
+    session.add(user)
+    session.commit()
     session.refresh(user)
     session.refresh(device)
 
