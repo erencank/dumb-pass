@@ -19,7 +19,9 @@ from tests.utils import UserDeviceFixture, _create_payload, create_vault_item
 
 @pytest.fixture(name="session")
 def session_fixture():
-    engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
+    engine = create_engine(
+        "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
+    )
     SQLModel.metadata.create_all(engine)
     with Session(engine) as session:
         yield session
@@ -106,7 +108,9 @@ def user_vault_item_fixture(user_and_device: UserDeviceFixture, session: Session
 
 
 @pytest.fixture(name="authenticated_client")
-def authenticated_client_fixture(client: TestClient, user_and_device: UserDeviceFixture) -> TestClient:
+def authenticated_client_fixture(
+    client: TestClient, user_and_device: UserDeviceFixture
+) -> TestClient:
     """
     Fixture that provides an authenticated client. It logs in the user
     created by the `user_and_device` fixture and sets the Authorization header.

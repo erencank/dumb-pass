@@ -16,7 +16,11 @@ def test_create_share_link(authenticated_client, user_vault_item: VaultItem) -> 
 
     blob = base64.b64encode(encrypted_blob).decode("utf-8")
     link_key = base64.b64encode(_link_key).decode("utf-8")
-    payload = {"encrypted_blob": blob, "expires_in_hours": 2, "vault_item_id": str(user_vault_item.id)}
+    payload = {
+        "encrypted_blob": blob,
+        "expires_in_hours": 2,
+        "vault_item_id": str(user_vault_item.id),
+    }
     response = authenticated_client.post("/links/", json=payload)
 
     assert response.status_code == status.HTTP_201_CREATED

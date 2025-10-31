@@ -6,7 +6,13 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session
 
 from src.db import get_session
-from src.models import PublicLink, PublicLinkCreateRequest, PublicLinkCreateResponse, PublicLinkReadResponse, User
+from src.models import (
+    PublicLink,
+    PublicLinkCreateRequest,
+    PublicLinkCreateResponse,
+    PublicLinkReadResponse,
+    User,
+)
 from src.security import get_current_user
 
 router = APIRouter(prefix="/links", tags=["Public Links"])
@@ -25,13 +31,19 @@ def create_public_link(
 
     expiration = datetime.now(timezone.utc) + timedelta(hours=request.expires_in_hours)
 
-    link = PublicLink.model_validate(request, update={"expires_at": expiration, "user_id": current_user.id}, from_attributes=True)
+    link = PublicLink.model_validate(
+        request,
+        update={"expires_at": expiration, "user_id": current_user.id},
+        from_attributes=True,
+    )
 
     session.add(link)
     session.commit()
     session.refresh(link)
 
-    return PublicLinkCreateResponse(link_id=link.id, expiration_timestamp=link.expiration_timestamp)
+    return PublicLinkCreateResponse(
+        link_id=link.id, expiration_timestamp=link.expiration_timestamp
+    )
 
 
 @router.get("/{link_id}", response_model=PublicLinkReadResponse)
@@ -48,12 +60,16 @@ def get_public_link_content(link_id: uuid.UUID, session: Annotated[Session, Depe
     if link.expires_at and link.expires_at < datetime.now(timezone.utc):
         session.delete(link)
         session.commit()
-        raise HTTPException(status_code=status.HTTP_410_GONE, detail="Link has expired or reached its view limit")
+        raise HTTPException(
+            status_code=status.HTTP_410_GONE, detail="Link has expired or reached its view limit"
+        )
 
     if link.max_views is not None and link.current_views >= link.max_views:
         session.delete(link)
         session.commit()
-        raise HTTPException(status_code=status.HTTP_410_GONE, detail="Link has expired or reached its view limit")
+        raise HTTPException(
+            status_code=status.HTTP_410_GONE, detail="Link has expired or reached its view limit"
+        )
 
     # Increment the view count and save
     link.current_views += 1
@@ -61,4 +77,6 @@ def get_public_link_content(link_id: uuid.UUID, session: Annotated[Session, Depe
     session.commit()
     session.refresh(link)
 
-    return PublicLinkReadResponse(contents=link.encrypted_blob, expiration_timestamp=link.expiration_timestamp)
+    return PublicLinkReadResponse(
+        contents=link.encrypted_blob, expiration_timestamp=link.expiration_timestamp
+    )

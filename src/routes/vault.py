@@ -20,7 +20,9 @@ def create_vault_item(
 ):
     "Create a new encrypted vault item for the authenticated user."
     # The client sends pre-encrypted data. The server just stores it.
-    db_item = VaultItem.model_validate(item, update={"user_id": current_user.id}, from_attributes=True)
+    db_item = VaultItem.model_validate(
+        item, update={"user_id": current_user.id}, from_attributes=True
+    )
 
     session.add(db_item)
     session.commit()
@@ -34,7 +36,11 @@ def get_vault_items(
     session: Annotated[Session, Depends(get_session)],
 ):
     "Retrieve all encrypted vault items for the authenticated user."
-    query = select(VaultItem).where(VaultItem.user_id == current_user.id).options(selectinload(VaultItem.public_links))  # type: ignore[arg-type]
+    query = (
+        select(VaultItem)
+        .where(VaultItem.user_id == current_user.id)
+        .options(selectinload(VaultItem.public_links))
+    )  # type: ignore[arg-type]
     items = session.exec(query).all()
     return items
 
@@ -46,7 +52,11 @@ def get_vault_item_by_id(
     session: Annotated[Session, Depends(get_session)],
 ):
     "Get a single vault item by its ID, with its public links nested inside."
-    query = select(VaultItem).where(VaultItem.user_id == current_user.id, VaultItem.id == item_id).options(selectinload(VaultItem.public_links))  # type: ignore[arg-type]
+    query = (
+        select(VaultItem)
+        .where(VaultItem.user_id == current_user.id, VaultItem.id == item_id)
+        .options(selectinload(VaultItem.public_links))
+    )  # type: ignore[arg-type]
     item = session.exec(query).first()
 
     if not item:
